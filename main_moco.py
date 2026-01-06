@@ -78,6 +78,24 @@ parser.add_argument(
     "using Data Parallel or Distributed Data Parallel",
 )
 parser.add_argument(
+    "--dataset",
+    default="rvl-cdip",
+    choices=["imagenet", "rvl-cdip"],
+    help="dataset type for self-supervised pretraining",
+)
+parser.add_argument(
+    "--rvl-split",
+    default="train",
+    type=str,
+    help="Hugging Face split name for RVL-CDIP (e.g., train)",
+)
+parser.add_argument(
+    "--rvl-cache",
+    default="/lus/flare/projects/PBML/ziyan/dataset",
+    type=str,
+    help="Hugging Face cache directory for RVL-CDIP dataset",
+)
+parser.add_argument(
     "--lr",
     "--learning-rate",
     default=0.03,
@@ -321,7 +339,6 @@ def main_worker(gpu, ngpus_per_node, args):
     cudnn.benchmark = True
 
     # Data loading code
-    traindir = os.path.join(args.data, "train")
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
     )
@@ -353,12 +370,28 @@ def main_worker(gpu, ngpus_per_node, args):
             normalize,
         ]
 
-    train_dataset = datasets.ImageFolder(
-        traindir,
-        deeplearning.cross_image_ssl.moco.loader.TwoCropsTransform(
-            transforms.Compose(augmentation)
-        ),
-    )
+    if args.dataset == "imagenet":
+        traindir = os.path.join(args.data, "train")
+        train_dataset = datasets.ImageFolder(
+            traindir,
+            deeplearning.cross_image_ssl.moco.loader.TwoCropsTransform(
+                transforms.Compose(augmentation)
+            ),
+        )
+    elif args.dataset == "rvl-cdip":
+        # ensure dataset is present locally; no-op if already cached
+        deeplearning.cross_image_ssl.moco.loader.ensure_rvl_cdip_cached(
+            split=args.rvl_split, cache_dir=args.rvl_cache
+        )
+        train_dataset = deeplearning.cross_image_ssl.moco.loader.RvlCdipHFDataset(
+            split=args.rvl_split,
+            cache_dir=args.rvl_cache,
+            transform=deeplearning.cross_image_ssl.moco.loader.TwoCropsTransform(
+                transforms.Compose(augmentation)
+            ),
+        )
+    else:
+        raise ValueError(f"Unsupported dataset: {args.dataset}")
 
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
