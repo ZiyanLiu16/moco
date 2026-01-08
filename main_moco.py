@@ -7,7 +7,6 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-
 import argparse
 import builtins
 import math
@@ -17,8 +16,8 @@ import shutil
 import time
 import warnings
 
-import deeplearning.cross_image_ssl.moco.builder
-import deeplearning.cross_image_ssl.moco.loader
+from moco import builder as moco_builder
+from moco import loader as moco_loader
 import torch
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
@@ -91,7 +90,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--rvl-cache",
-    default="/lus/flare/projects/PBML/ziyan/dataset",
+    default="/lus/eagle/projects/PBML/ziyan/dataset",
     type=str,
     help="Hugging Face cache directory for RVL-CDIP dataset",
 )
@@ -196,7 +195,6 @@ parser.add_argument(
 )
 parser.add_argument("--cos", action="store_true", help="use cosine lr schedule")
 
-
 def main() -> None:
     args = parser.parse_args()
 
@@ -224,6 +222,7 @@ def main() -> None:
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
     ngpus_per_node = torch.cuda.device_count()
+
     if args.multiprocessing_distributed:
         # Since we have ngpus_per_node processes per node, the total world_size
         # needs to be adjusted accordingly
@@ -265,7 +264,7 @@ def main_worker(gpu, ngpus_per_node, args):
         )
     # create model
     print("=> creating model '{}'".format(args.arch))
-    model = deeplearning.cross_image_ssl.moco.builder.MoCo(
+    model = moco_builder.MoCo(
         models.__dict__[args.arch],
         args.moco_dim,
         args.moco_k,
@@ -352,7 +351,7 @@ def main_worker(gpu, ngpus_per_node, args):
             ),
             transforms.RandomGrayscale(p=0.2),
             transforms.RandomApply(
-                [deeplearning.cross_image_ssl.moco.loader.GaussianBlur([0.1, 2.0])],
+                [moco_loader.GaussianBlur([0.1, 2.0])],
                 p=0.5,
             ),
             transforms.RandomHorizontalFlip(),
@@ -374,19 +373,15 @@ def main_worker(gpu, ngpus_per_node, args):
         traindir = os.path.join(args.data, "train")
         train_dataset = datasets.ImageFolder(
             traindir,
-            deeplearning.cross_image_ssl.moco.loader.TwoCropsTransform(
+            moco_loader.TwoCropsTransform(
                 transforms.Compose(augmentation)
             ),
         )
     elif args.dataset == "rvl-cdip":
-        # ensure dataset is present locally; no-op if already cached
-        deeplearning.cross_image_ssl.moco.loader.ensure_rvl_cdip_cached(
-            split=args.rvl_split, cache_dir=args.rvl_cache
-        )
-        train_dataset = deeplearning.cross_image_ssl.moco.loader.RvlCdipHFDataset(
+        train_dataset = moco_loader.RvlCdipHFDataset(
             split=args.rvl_split,
             cache_dir=args.rvl_cache,
-            transform=deeplearning.cross_image_ssl.moco.loader.TwoCropsTransform(
+            transform=moco_loader.TwoCropsTransform(
                 transforms.Compose(augmentation)
             ),
         )

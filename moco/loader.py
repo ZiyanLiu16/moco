@@ -8,7 +8,7 @@
 import random
 from typing import Optional
 
-from datasets import load_dataset
+from datasets import DownloadMode, load_dataset
 from PIL import Image
 from PIL import ImageFilter
 from torch.utils.data import Dataset
@@ -78,3 +78,15 @@ class RvlCdipHFDataset(Dataset):
 
         # return a dummy label (unused for self-supervised learning)
         return img, 0
+
+
+def ensure_rvl_cdip_cached(split: str = "train", cache_dir: Optional[str] = None) -> None:
+    """
+    Materialize the requested split in the local Hugging Face cache if missing.
+    """
+    load_dataset(
+        RVL_CDI_PHF_ID,
+        split=split,
+        cache_dir=cache_dir,
+        download_mode=DownloadMode.REUSE_CACHE_IF_EXISTS,
+    )
