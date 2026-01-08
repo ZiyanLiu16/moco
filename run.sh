@@ -9,8 +9,6 @@
 #PBS -j oe
 #PBS -V
 
-set -euo pipefail
-
 # --- user-configurable paths -------------------------------------------------
 REPO_ROOT="/lus/eagle/projects/PBML/ziyan/moco"
 DATASET_DIR="/lus/eagle/projects/PBML/ziyan/dataset"
@@ -27,6 +25,21 @@ if [ -f "${HOME}/.bashrc" ]; then
   # shellcheck source=/dev/null
   source "${HOME}/.bashrc"
 fi
+
+
+# Ensure conda is available in batch jobs
+if ! command -v conda >/dev/null 2>&1; then
+  module load conda
+fi
+CONDA_BASE="$(conda info --base)"
+# shellcheck disable=SC1091
+source "${CONDA_BASE}/etc/profile.d/conda.sh"
+
+# Activate the fixed Conda environment path unless overridden.
+CONDA_ENV_PATH="${CONDA_ENV_PATH:-/lus/eagle/projects/PBML/ziyan/envs/moco}"
+conda activate "${CONDA_ENV_PATH}"
+
+set -euo pipefail
 
 
 # Make sure this checkout is importable.
