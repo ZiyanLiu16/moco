@@ -57,6 +57,6 @@ export OMP_NUM_THREADS="${OMP_NUM_THREADS:-32}"
 python -u main_moco.py "${DATASET_DIR}" \
   --mlp --moco-t 0.2 --aug-plus --cos \
   --dist-url "tcp://${MASTER_ADDR}:${MASTER_PORT}" \
+  --workers 1 \
   --multiprocessing-distributed --world-size 1 --rank 0 \
   2>&1 | tee "${RUN_DIR}/train.log"
-
